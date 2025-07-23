@@ -92,29 +92,34 @@ def crear_ventana():
 
         def confirmar():
             cid = int(ent["id_cliente"].get())
-            saldo, _ = obtener_datos_cliente(cid)
-            if tipo == "interes":
-                try:
-                    base = obtener_ultimo_pago_hasta_por_interes(cid)
-                except:
-                    # Si no hay histórico, usar el pago_hasta actual del cliente
-                    _, pago_hasta = obtener_datos_cliente(cid)
-                    if pago_hasta:
-                        from datetime import datetime
-                        base = datetime.combine(pago_hasta, datetime.min.time())
-                    else:
-                        base = datetime.strptime(ent["fecha_pago"].get(), "%Y-%m-%d")
+            saldo, pago_hasta_cliente = obtener_datos_cliente(cid)
 
-                porcentaje = float(pct.get().replace('%',''))/100
-                m = meses_var.get()
-                monto = calcular_interes(saldo, porcentaje)*m
-                nuevo = base + relativedelta(months=m)
+            if tipo == "interes":
+                # 1) Fecha de pago ingresada por el usuario
+                fecha_str = ent["fecha_pago"].get()
+                fecha_usuario = datetime.strptime(fecha_str, "%Y-%m-%d")
+
+                # 2) Definir base: si ya hay pago_hasta en clientes, úsalo; si no, la fecha de usuario
+                if pago_hasta_cliente:
+                    base = datetime.combine(pago_hasta_cliente, datetime.min.time())
+                else:
+                    base = fecha_usuario
+
+                # 3) Leer porcentaje y meses, asegurar al menos 1 mes
+                porcentaje = float(pct.get().replace('%', '')) / 100
+                m = max(1, int(meses_var.get()))
+
+                # 4) Calcular interés y nueva fecha, y **convertir a date**
+                monto = calcular_interes(saldo, porcentaje) * m
+                nuevo_dt = base + relativedelta(months=m)
+                nuevo_fecha = nuevo_dt.date()
+
                 resumen = (
                     f"NOMBRE: {obtener_nombre_cliente(cid)}\n"
                     f"RECIBO: {ent['numero_recibo'].get()}\n"
-                    f"FECHA: {ent['fecha_pago'].get()}\n"
+                    f"FECHA: {fecha_str}\n"
                     f"MES(ES): {m}\n"
-                    f"PAGO HASTA: {nuevo}\n"
+                    f"PAGO HASTA: {nuevo_fecha}\n"
                     f"MONTO: ${monto:,.2f}\n"
                     f"SALDO: ${saldo:,.2f}\n"
                     f"TIPO: interés\n"
@@ -123,16 +128,43 @@ def crear_ventana():
                 )
                 if messagebox.askokcancel("Confirmar", resumen):
                     registrar_interes({
+                        "numero_recibo":   ent["numero_recibo"].get(),
+                        "id_cliente":      cid,
+                        "fecha_pago":      fecha_str,
+                        "pago_hasta":      nuevo_fecha,   # <-- date puro
+                        "abono_intereses": monto,
+                        "saldo_restante":  saldo,
+                        "observaciones":   ent["observaciones"].get(),
+                        "consigno_a":      quien.get()
+                    })
+                    ventana.destroy()
+
+
+            elif tipo == "abono":
+                ab = float(abx.get())
+                nuevo_saldo = saldo - ab
+                resumen = (
+                    f"NOMBRE: {obtener_nombre_cliente(cid)}\n"
+                    f"RECIBO: {ent['numero_recibo'].get()}\n"
+                    f"FECHA: {ent['fecha_pago'].get()}\n"
+                    f"ABONO: ${ab:,.2f}\n"
+                    f"NUEVO SALDO: ${nuevo_saldo:,.2f}\n"
+                    f"TIPO: abono\n"
+                    f"OBS: {ent['observaciones'].get()}\n"
+                    f"CONSIGNÓ A: {quien.get()}"
+                )
+                if messagebox.askokcancel("Confirmar", resumen):
+                    registrar_abono({
                         "numero_recibo": ent["numero_recibo"].get(),
                         "id_cliente": cid,
                         "fecha_pago": ent["fecha_pago"].get(),
-                        "pago_hasta": nuevo,
-                        "abono_intereses": monto,
-                        "saldo_restante": saldo,
+                        "abono_capital": ab,
+                        "saldo_restante": nuevo_saldo,
                         "observaciones": ent["observaciones"].get(),
                         "consigno_a": quien.get()
                     })
                     ventana.destroy()
+
 
             elif tipo == "abono":
                 ab = float(abx.get())
