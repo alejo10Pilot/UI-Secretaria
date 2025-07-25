@@ -68,7 +68,7 @@ def crear_ventana():
 
         if tipo == "interes":
             tk.Label(ventana, text="Seleccione % interés").pack()
-            pct = tk.StringVar()
+            pct = tk.StringVar(value="1.8%")
             cb = ttk.Combobox(ventana, textvariable=pct, values=["1.8%", "2%", "2.2%"])
             cb.pack()
             tk.Label(ventana, text="¿Meses?").pack()
@@ -135,6 +135,7 @@ def crear_ventana():
                 datos = {
                     "numero_recibo": ent['numero_recibo'].get(),
                     "id_cliente": cid,
+                    "registro_carpeta": registro,
                     "fecha_pago": fecha_str,
                     "observaciones": ent['observaciones'].get(),
                     "consigno_a": quien.get()
@@ -162,36 +163,67 @@ def crear_ventana():
         ventana.title("Registrar Pago Parcial")
         ventana.geometry("500x500")
 
-        campos = {"numero_recibo":"Número de Recibo","id_cliente":"Registro Carpeta","valor":"Valor Parcial ($)","observaciones":"Observaciones"}
+        campos = {
+            "numero_recibo": "Número de Recibo",
+            "id_cliente": "Registro Carpeta",
+            "fecha_pago": "Fecha Pago (YYYY-MM-DD)",
+            "valor": "Valor Parcial ($)",
+            "observaciones": "Observaciones"
+        }
         ent = {}
-        for k,lbl in campos.items():
-            tk.Label(ventana,text=lbl).pack(pady=(10,0))
-            e=tk.Entry(ventana)
-            if k=="valor":e.insert(0,"0")
+        for k, lbl in campos.items():
+            tk.Label(ventana, text=lbl).pack(pady=(10, 0))
+            e = tk.Entry(ventana)
+            if k == "valor":
+                e.insert(0, "0")
+            if k == "fecha_pago":
+                e.insert(0, datetime.today().strftime('%Y-%m-%d'))
             e.pack()
-            ent[k]=e
-        tk.Label(ventana,text="Consignó a:").pack(pady=(10,0))
-        quien=tk.StringVar()
-        cons=ttk.Combobox(ventana,textvariable=quien,values=["Efectivo","Alejo","Maria","Carlos","Andrea","Angela"],state="readonly")
+            ent[k] = e
+
+        tk.Label(ventana, text="Consignó a:").pack(pady=(10, 0))
+        quien = tk.StringVar()
+        cons = ttk.Combobox(
+            ventana,
+            textvariable=quien,
+            values=["Efectivo", "Alejo", "Maria", "Carlos", "Andrea", "Angela"],
+            state="readonly"
+        )
         cons.pack()
+        
         def confirmar_parcial():
             try:
-                rec=ent['numero_recibo'].get()
-                registro=int(ent['id_cliente'].get())
-                cid=obtener_id_cliente_por_registro(registro)
-                val=float(ent['valor'].get())
-                obs=ent['observaciones'].get()
-                quien_txt=quien.get()
-                saldo_actual,_=obtener_datos_cliente(cid)
-                datos={'numero_recibo':rec,'id_cliente':cid,'fecha_pago':datetime.today().strftime('%Y-%m-%d'),'abono_parcial':val,'saldo_restante':saldo_actual,'observaciones':obs,'consigno_a':quien_txt}
-                confirm_msg=(f"Nº Recibo: {rec}\nRegistro Carpeta: {registro}\nValor Parcial: ${val:,.2f}\nSaldo (sin cambios): ${saldo_actual:,.2f}\nConsignó a: {quien_txt}\n\n¿Registrar este abono parcial sin afectar saldo ni pago_hasta?")
-                if messagebox.askokcancel("Confirmar Pago Parcial",confirm_msg):
+                rec = ent['numero_recibo'].get()
+                registro = int(ent['id_cliente'].get())
+                fecha_str = ent['fecha_pago'].get()
+                cid = obtener_id_cliente_por_registro(registro)
+                val = float(ent['valor'].get())
+                obs = ent['observaciones'].get()
+                quien_txt = quien.get()
+                saldo_actual, _ = obtener_datos_cliente(cid)
+                datos = {
+                    'numero_recibo': rec,
+                    'id_cliente': cid,
+                    'registro_carpeta': registro,
+                    'fecha_pago': fecha_str,
+                    'abono_parcial': val,
+                    'saldo_restante': saldo_actual,
+                    'observaciones': obs,
+                    'consigno_a': quien_txt
+                }
+                confirm_msg = (
+                    f"Nº Recibo: {rec}\nRegistro Carpeta: {registro}\nFecha: {fecha_str}\n"
+                    f"Valor Parcial: ${val:,.2f}\nSaldo (sin cambios): ${saldo_actual:,.2f}\n"
+                    f"Consignó a: {quien_txt}\n\n¿Registrar este abono parcial sin afectar saldo ni pago_hasta?"
+                )
+                if messagebox.askokcancel("Confirmar Pago Parcial", confirm_msg):
                     registrar_abono_parcial(datos)
-                    messagebox.showinfo("Listo","Pago parcial registrado correctamente.")
+                    messagebox.showinfo("Listo", "Pago parcial registrado correctamente.")
                     ventana.destroy()
             except Exception as e:
-                messagebox.showerror("Error",str(e))
-        tk.Button(ventana,text="Confirmar Pago Parcial",command=confirmar_parcial).pack(pady=20)
+                messagebox.showerror("Error", str(e))
+
+        tk.Button(ventana, text="Confirmar Pago Parcial", command=confirmar_parcial).pack(pady=20)
 
     raiz_buttons=[("Registrar Interés",lambda:abrir_registro("interes")),("Registrar Abono",lambda:abrir_registro("abono")),("Registrar Pago Parcial",abrir_pago_parcial),("Ver Clientes",lambda:(raiz.destroy(),crear_vista_general()))]
     for text,cmd in raiz_buttons:

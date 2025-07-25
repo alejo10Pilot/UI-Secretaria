@@ -66,14 +66,16 @@ def registrar_interes(datos):
     cursor.execute(
         """
         INSERT INTO recibos (
-            numero_recibo, id_cliente, fecha_pago,
+            numero_recibo, id_cliente, registro_carpeta, fecha_pago,
             pago_hasta, abono_intereses, saldo_restante,
             tipo, observaciones, consigno_a
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
         (
             datos["numero_recibo"],
             datos["id_cliente"],
+            datos["registro_carpeta"],
             datos["fecha_pago"],
             datos["pago_hasta"],
             datos["abono_intereses"],
@@ -106,15 +108,18 @@ def registrar_abono(datos):
     cursor.execute(
         """
         INSERT INTO recibos (
-            numero_recibo, id_cliente, fecha_pago,
-            abono_capital, saldo_restante, tipo,
-            observaciones, consigno_a
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            numero_recibo, id_cliente, registro_carpeta, fecha_pago,
+            pago_hasta, abono_intereses, saldo_restante,
+            tipo, observaciones, consigno_a
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
         (
             datos["numero_recibo"],
             datos["id_cliente"],
+            datos["registro_carpeta"],
             datos["fecha_pago"],
+            None,                # pago_hasta no cambia con abono a capital
             datos["abono_capital"],
             datos["saldo_restante"],
             "abono",
@@ -143,15 +148,18 @@ def registrar_abono_parcial(datos):
     cursor.execute(
         """
         INSERT INTO recibos (
-            numero_recibo, id_cliente, fecha_pago,
-            abono_capital, saldo_restante, tipo,
-            observaciones, consigno_a
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            numero_recibo, id_cliente, registro_carpeta, fecha_pago,
+            pago_hasta, abono_intereses, saldo_restante,
+            tipo, observaciones, consigno_a
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
         (
             datos["numero_recibo"],
             datos["id_cliente"],
+            datos["registro_carpeta"],
             datos["fecha_pago"],
+            None,                 # pago_hasta no cambia en pago parcial
             datos["abono_parcial"],
             datos["saldo_restante"],
             "abono_parcial",
