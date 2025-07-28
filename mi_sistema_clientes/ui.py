@@ -74,6 +74,10 @@ def crear_ventana():
             tk.Label(ventana, text="¿Meses?").pack()
             meses_var = tk.IntVar(value=1)
             tk.Spinbox(ventana, from_=1, to=12, textvariable=meses_var, width=5).pack()
+            tk.Label(ventana, text="Ajuste (+ o -)").pack()
+            ajuste_entry = tk.Entry(ventana)
+            ajuste_entry.insert(0, "0")
+            ajuste_entry.pack()
         else:
             tk.Label(ventana, text="Abono a capital").pack()
             abx = tk.Entry(ventana)
@@ -91,7 +95,7 @@ def crear_ventana():
         def confirmar():
             registro = int(ent["id_cliente"].get())
             cid = obtener_id_cliente_por_registro(registro)
-            saldo, pago_hasta_cliente = obtener_datos_cliente(cid)
+            saldo, pago_hasta_cliente, ajuste_pendiente = obtener_datos_cliente(cid)
 
             fecha_str = ent["fecha_pago"].get()
             fecha_usuario = datetime.strptime(fecha_str, "%Y-%m-%d")
@@ -99,23 +103,58 @@ def crear_ventana():
 
             monto = 0
             resumen = ""
+            ajuste_restante = 0.0  # Lo que quedará guardado después de este pago
+
             if tipo == "interes":
-                porcentaje = float(pct.get().replace('%',''))/100
+                porcentaje = float(pct.get().replace('%', '')) / 100
                 m = max(1, int(meses_var.get()))
-                monto = calcular_interes(saldo, porcentaje)*m
+                monto_calculado = calcular_interes(saldo, porcentaje) * m
+
+                # Leer ajuste adicional (+ o -)
+                try:
+                    ajuste_nuevo = float(ajuste_entry.get()) if ajuste_entry.get().strip() != "" else 0.0
+                except:
+                    ajuste_nuevo = 0.0
+
+                # Ajuste total disponible (saldo a favor previo + nuevo ajuste)
+                ajuste_total = ajuste_pendiente + ajuste_nuevo
+
+                # Calcular monto real aplicando saldo a favor
+                monto_real = monto_calculado - ajuste_total  # restamos saldo a favor
+
+                # Determinar ajuste restante (si se usó todo o queda algo)
+                if monto_real < 0:
+                    # Se usó menos del saldo a favor, queda un nuevo saldo pendiente
+                    ajuste_restante = abs(monto_real)
+                    monto_real = 0.0  # no hay que pagar nada
+                else:
+                    ajuste_restante = 0.0  # ya se usó todo el ajuste
+
                 nuevo_fecha = (base + relativedelta(months=m)).date()
+
+                obs_extra = ""
+                if ajuste_restante > 0:
+                    obs_extra = f"\nSaldo a favor del cliente: ${ajuste_restante:,.2f}"
+
                 resumen = (
                     f"NOMBRE: {obtener_nombre_cliente(cid)}\n"
                     f"RECIBO: {ent['numero_recibo'].get()}\n"
                     f"FECHA: {fecha_str}\n"
                     f"MES(ES): {m}\n"
                     f"PAGO HASTA: {nuevo_fecha}\n"
-                    f"MONTO: ${monto:,.2f}\n"
+                    f"MONTO CALCULADO: ${monto_calculado:,.2f}\n"
+                    f"AJUSTE PENDIENTE ANTERIOR: ${ajuste_pendiente:,.2f}\n"
+                    f"AJUSTE NUEVO: ${ajuste_nuevo:,.2f}\n"
+                    f"AJUSTE USADO: ${ajuste_total - ajuste_restante:,.2f}\n"
+                    f"AJUSTE RESTANTE: ${ajuste_restante:,.2f}\n"
+                    f"MONTO REAL: ${monto_real:,.2f}\n"
                     f"SALDO: ${saldo:,.2f}\n"
                     f"TIPO: interés\n"
-                    f"OBS: {ent['observaciones'].get()}\n"
+                    f"OBS: {ent['observaciones'].get()}{obs_extra}\n"
                     f"CONSIGNÓ A: {quien.get()}"
                 )
+                monto = monto_real
+
             else:
                 ab = float(abx.get())
                 nuevo_saldo = saldo - ab
@@ -144,7 +183,8 @@ def crear_ventana():
                     datos.update({
                         "pago_hasta": nuevo_fecha,
                         "abono_intereses": monto,
-                        "saldo_restante": saldo
+                        "saldo_restante": saldo,
+                        "ajuste_pendiente": ajuste_restante  # se actualiza correctamente
                     })
                     registrar_interes(datos)
                 else:

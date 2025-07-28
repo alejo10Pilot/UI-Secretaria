@@ -22,15 +22,16 @@ def obtener_datos_cliente(id_cliente):
     conn = conectar()
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT saldo_restante, pago_hasta FROM clientes WHERE id_cliente = %s",
+        "SELECT saldo_restante, pago_hasta, ajuste_pendiente FROM clientes WHERE id_cliente = %s",
         (id_cliente,)
     )
     resultado = cursor.fetchone()
     conn.close()
     if resultado:
-        return resultado
+        return resultado  # (saldo_restante, pago_hasta, ajuste_pendiente)
     else:
         raise ValueError("Cliente no encontrado")
+
 
 
 def obtener_nombre_cliente(id_cliente):
@@ -68,9 +69,9 @@ def registrar_interes(datos):
         INSERT INTO recibos (
             numero_recibo, id_cliente, registro_carpeta, fecha_pago,
             pago_hasta, abono_intereses, saldo_restante,
-            tipo, observaciones, consigno_a
+            ajuste_pendiente, tipo, observaciones, consigno_a
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
         (
             datos["numero_recibo"],
@@ -80,6 +81,7 @@ def registrar_interes(datos):
             datos["pago_hasta"],
             datos["abono_intereses"],
             datos["saldo_restante"],
+            datos.get("ajuste_pendiente", 0),
             "interes",
             datos["observaciones"],
             datos["consigno_a"]
@@ -89,17 +91,20 @@ def registrar_interes(datos):
         """
         UPDATE clientes
            SET fecha_ultimo_pago = %s,
-               pago_hasta = %s
+               pago_hasta = %s,
+               ajuste_pendiente = %s
          WHERE id_cliente = %s
         """,
         (
             datos["fecha_pago"],
             datos["pago_hasta"],
+            datos.get("ajuste_pendiente", 0),
             datos["id_cliente"]
         )
     )
     conn.commit()
     conn.close()
+
 
 
 def registrar_abono(datos):
