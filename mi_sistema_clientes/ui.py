@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
+import customtkinter as ctk
 
 from db import (
     obtener_datos_cliente,
@@ -14,6 +15,83 @@ from db import (
     obtener_ultimo_pago_hasta_por_interes,
     obtener_id_cliente_por_registro
 )
+
+def mostrar_confirmacion(titulo, resumen):
+    ctk.set_appearance_mode("light")  
+    ctk.set_default_color_theme("blue")  
+
+    ventana = ctk.CTkToplevel()
+    ventana.title(titulo)
+    ventana.geometry("480x550")
+    ventana.resizable(False, False)
+    ventana.grab_set()
+
+    # Frame principal con bordes redondeados
+    frame = ctk.CTkFrame(ventana, corner_radius=20)
+    frame.pack(padx=20, pady=20, fill="both", expand=True)
+
+    # Título
+    titulo_label = ctk.CTkLabel(frame, text="Confirmar Datos", font=("Helvetica Neue", 20, "bold"))
+    titulo_label.pack(pady=(20, 15))
+
+    # Contenedor sin scroll (solo labels)
+    datos_frame = ctk.CTkFrame(frame, fg_color="transparent")
+    datos_frame.pack(padx=15, pady=10, fill="both", expand=True)
+
+    for linea in resumen.split("\n"):
+        if ":" in linea:
+            clave, valor = linea.split(":", 1)
+            fila = ctk.CTkFrame(datos_frame, fg_color="transparent")
+            fila.pack(fill="x", pady=5)
+
+            clave_label = ctk.CTkLabel(
+                fila, text=clave.strip() + ":", width=140,
+                anchor="w", font=("Helvetica Neue", 13, "bold")
+            )
+            clave_label.pack(side="left", padx=(5, 10))
+
+            valor_label = ctk.CTkLabel(
+                fila, text=valor.strip(),
+                anchor="w", font=("Helvetica Neue", 13)
+            )
+            valor_label.pack(side="left", fill="x", expand=True)
+        elif linea.strip():
+            ctk.CTkLabel(datos_frame, text=linea.strip(), font=("Helvetica Neue", 13)).pack(anchor="w", pady=2)
+
+    # Frame de botones
+    botones_frame = ctk.CTkFrame(frame, fg_color="transparent")
+    botones_frame.pack(pady=(20, 15))
+
+    confirmado = {"valor": False}
+
+    def confirmar():
+        confirmado["valor"] = True
+        ventana.destroy()
+
+    def cancelar():
+        ventana.destroy()
+
+    cancelar_btn = ctk.CTkButton(
+        botones_frame, text="Cancelar", command=cancelar,
+        width=120, height=35, fg_color="#f44336", hover_color="#e53935", font=("Helvetica Neue", 13, "bold")
+        )
+    cancelar_btn.pack(side="left", padx=15)
+
+    confirmar_btn = ctk.CTkButton(
+        botones_frame, text="Confirmar", command=confirmar,
+        width=120, height=35, fg_color="#4CAF50", hover_color="#45a049", font=("Helvetica Neue", 13, "bold")
+    )
+    confirmar_btn.pack(side="left", padx=15)
+
+    ventana.wait_window()
+    return confirmado["valor"]
+
+
+
+
+
+
+
 
 
 def crear_vista_general():
@@ -137,22 +215,17 @@ def crear_ventana():
                     obs_extra = f"\nSaldo a favor del cliente: ${ajuste_restante:,.2f}"
 
                 resumen = (
-                    f"NOMBRE: {obtener_nombre_cliente(cid)}\n"
                     f"RECIBO: {ent['numero_recibo'].get()}\n"
+                    f"NOMBRE: {obtener_nombre_cliente(cid)}\n"
                     f"FECHA: {fecha_str}\n"
-                    f"MES(ES): {m}\n"
+                    f"MESES: {m}\n"
                     f"PAGO HASTA: {nuevo_fecha}\n"
-                    f"MONTO CALCULADO: ${monto_calculado:,.2f}\n"
-                    f"AJUSTE PENDIENTE ANTERIOR: ${ajuste_pendiente:,.2f}\n"
-                    f"AJUSTE NUEVO: ${ajuste_nuevo:,.2f}\n"
-                    f"AJUSTE USADO: ${ajuste_total - ajuste_restante:,.2f}\n"
-                    f"AJUSTE RESTANTE: ${ajuste_restante:,.2f}\n"
-                    f"MONTO REAL: ${monto_real:,.2f}\n"
-                    f"SALDO: ${saldo:,.2f}\n"
-                    f"TIPO: interés\n"
-                    f"OBS: {ent['observaciones'].get()}{obs_extra}\n"
-                    f"CONSIGNÓ A: {quien.get()}"
+                    f"MONTO PAGADO: ${monto_real:,.2f}\n"
+                    f"SALDO RESTANTE: ${saldo:,.2f}\n"
+                    f"CONSIGNÓ A: {quien.get()}\n"
+                    f"OBSERVACIONES: {ent['observaciones'].get()}{obs_extra}"
                 )
+
                 monto = monto_real
 
             else:
@@ -170,7 +243,7 @@ def crear_ventana():
                     f"CONSIGNÓ A: {quien.get()}"
                 )
 
-            if messagebox.askokcancel("Confirmar", resumen):
+            if mostrar_confirmacion("Confirmar datos", resumen):
                 datos = {
                     "numero_recibo": ent['numero_recibo'].get(),
                     "id_cliente": cid,
