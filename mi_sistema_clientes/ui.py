@@ -81,7 +81,7 @@ def crear_ventana():
             abx.pack()
 
         tk.Label(ventana, text="Consignó a:").pack()
-        quien = tk.StringVar()
+        quien = tk.StringVar(value="Efectivo")
         cons = ttk.Combobox(
             ventana, textvariable=quien,
             values=["Efectivo","Alejo","Maria","Carlos","Andrea","Angela"]
@@ -182,7 +182,7 @@ def crear_ventana():
             ent[k] = e
 
         tk.Label(ventana, text="Consignó a:").pack(pady=(10, 0))
-        quien = tk.StringVar()
+        quien = tk.StringVar(value="Efectivo")
         cons = ttk.Combobox(
             ventana,
             textvariable=quien,
